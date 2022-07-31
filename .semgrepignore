@@ -1,0 +1,32 @@
+# Copied from https://github.com/returntocorp/semgrep/blob/develop/semgrep/semgrep/templates/.semgrepignore
+# We need to have this file temporarily in order to have consistent behavior of finding vulnerabilities in
+# paths that have test or tests in the path as semgrep was recently updated to ignore those paths. r2c has
+# mentioned that they will be removing the test default from a future release.
+
+# Ignore git items
+.gitignore
+.git/
+:include .gitignore
+
+# Common large paths
+node_modules/
+build/
+dist/
+vendor/
+env/
+.env/
+venv/
+.venv/
+.tox/
+*.min.js
+
+# Common test paths
+test/
+tests/
+*_test.go
+
+# Semgrep rules folder
+.semgrep
+
+# Semgrep-action log folder
+.semgrep_logs/

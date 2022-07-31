@@ -1,0 +1,15 @@
+---
+runner:
+  hadolint:
+    cmd: hadolint -f checkstyle $(git ls-files --exclude='*Dockerfile*' --ignored)
+    format: checkstyle
+  misspell:
+    cmd: misspell  -i importas -error $(git ls-files)
+    errorformat:
+      - "%f:%l:%c: %m"
+    level: warning
+  semgrep:
+    cmd: semgrep --config=p/ci --config=p/auto --json --metrics=off . | jq -r '.results[] | "\(.path):\(.start.line):\(.start.col)\: \(.extra.message)"'
+    errorformat:
+      - "%f:%l:%c: %m"
+    level: warning

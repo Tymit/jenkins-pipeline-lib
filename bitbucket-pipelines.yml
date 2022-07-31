@@ -1,0 +1,41 @@
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+image: atlassian/default-image:3
+clone:
+  depth: 1 # include the last commits
+
+pipelines:
+  pull-requests:
+    "**": #this runs as default for any branch not elsewhere defined
+      - parallel:
+          - step:
+              name: "Security scan"
+              script:
+                # Run a security scan for sensitive data.
+                # See more security tools at https://bitbucket.org/product/features/pipelines/integrations?&category=security
+                - pipe: atlassian/git-secrets-scan:0.5.1
+          - step:
+              name: Reviewdog
+              image: python:3.10
+              services:
+                - docker
+              caches:
+                - docker
+              script:
+                - apt-get update -q && apt-get install -y -q --no-install-recommends git jq
+                - pip install semgrep
+                - wget -O - -q https://git.io/misspell | sh -s -- -b $(pwd)
+                - wget -q https://github.com/hadolint/hadolint/releases/download/v2.7.0/hadolint-Linux-x86_64 -O $(pwd)/hadolint && chmod +x $(pwd)/hadolint
+                - wget -O - -q https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh | sh -s -- -b $(pwd)
+                - |
+                  semgrep --config=p/ci --config=p/auto --json --metrics=off . \
+                    | jq -r '.results[] | "\(.path):\(.start.line):\(.start.col): \(.extra.message)"' \
+                    | ./reviewdog -efm="%f:%l:%c: %m" -name=semgrep -reporter=bitbucket-code-report -filter-mode=nofilter
+                - |
+                  git ls-files | grep -Ev '^(.git)' \
+                    | xargs ./misspell -i importas -error \
+                    | ./reviewdog -efm="%f:%l:%c: %m" -name=misspell -reporter=bitbucket-code-report -filter-mode=nofilter
+                - |
+                  git ls-files --exclude='*Dockerfile*' --ignored \
+                    | xargs ./hadolint -f checkstyle \
+                    | ./reviewdog -f=checkstyle -name=hadolint -reporter=bitbucket-code-report -filter-mode=nofilter || true
